@@ -91,8 +91,47 @@ const htmlTemplate = /* html */ `<!doctype html>
         max-width: 1100px;
         margin: 0 auto;
         padding: 24px 16px 48px;
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 24px;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 6px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        position: sticky;
+        top: 16px;
+        backdrop-filter: blur(6px);
+        z-index: 20;
+      }
+      .tab-button {
+        border: none;
+        background: transparent;
+        color: #475569;
+        font-weight: 600;
+        padding: 10px 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      }
+      .tab-button:hover {
+        background: rgba(148, 163, 184, 0.2);
+      }
+      .tab-button.active {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.28);
+      }
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
       }
       section {
         background: #fff;
@@ -150,6 +189,73 @@ const htmlTemplate = /* html */ `<!doctype html>
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+      }
+      .dashboard-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: flex-end;
+        margin-bottom: 26px;
+      }
+      .dashboard-control {
+        flex: 1 1 180px;
+        min-width: 160px;
+      }
+      .dashboard-metrics {
+        display: grid;
+        gap: 18px;
+      }
+      @media (min-width: 720px) {
+        .dashboard-metrics {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+      }
+      .metric-card {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        padding: 18px 20px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.10);
+      }
+      .metric-label {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+      .metric-value {
+        font-size: 34px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 6px;
+      }
+      .metric-sub {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .trend-up {
+        color: #16a34a;
+      }
+      .trend-down {
+        color: #dc2626;
+      }
+      .dashboard-updated {
+        margin-top: 22px;
+        color: #64748b;
+        font-size: 13px;
+      }
+      .dashboard-chart-card {
+        margin-top: 26px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 18px;
+        padding: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 14px 32px rgba(15, 23, 42, 0.12);
       }
       .pill-button {
         border: none;
@@ -324,7 +430,63 @@ const htmlTemplate = /* html */ `<!doctype html>
       <p style="margin-top: 8px; opacity: 0.92">自动抓取实时金价、管理预警规则并触发 Webhook</p>
     </header>
     <main>
-      <section>
+      <nav class="tabs" aria-label="数据看板导航" role="tablist">
+        <button type="button" class="tab-button active" role="tab" data-tab="overview" id="tab-overview" aria-controls="panel-overview">数据大盘</button>
+        <button type="button" class="tab-button" role="tab" data-tab="latest" id="tab-latest" aria-controls="panel-latest">最新报价</button>
+        <button type="button" class="tab-button" role="tab" data-tab="trend" id="tab-trend" aria-controls="panel-trend">历史走势</button>
+        <button type="button" class="tab-button" role="tab" data-tab="rules" id="tab-rules" aria-controls="panel-rules">预警规则</button>
+      </nav>
+
+      <section class="tab-panel active" id="panel-overview" data-tab="overview" role="tabpanel" aria-labelledby="tab-overview">
+        <h2>数据大盘</h2>
+        <div class="muted" id="dashboard-subtitle">聚焦品种：加载中...</div>
+        <div class="dashboard-controls">
+          <div class="dashboard-control">
+            <label for="dashboard-symbol">聚焦黄金品种</label>
+            <select id="dashboard-symbol"></select>
+          </div>
+          <div class="dashboard-control">
+            <label for="dashboard-range">历史点数</label>
+            <select id="dashboard-range">
+              <option value="60">最新 60</option>
+              <option value="180">最新 180</option>
+              <option value="360">最新 360</option>
+              <option value="720">最新 720</option>
+            </select>
+          </div>
+        </div>
+        <div class="dashboard-metrics">
+          <div class="metric-card">
+            <div class="metric-label">最新价格</div>
+            <div class="metric-value" id="dashboard-price">--</div>
+            <div class="metric-sub" id="dashboard-change">较区间起点 --</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">买入价 (BP)</div>
+            <div class="metric-value" id="dashboard-bid">--</div>
+            <div class="metric-sub">卖出差价：<span id="dashboard-spread">--</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">卖出价 (SP)</div>
+            <div class="metric-value" id="dashboard-ask">--</div>
+            <div class="metric-sub">均值：<span id="dashboard-mid">--</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">波动区间</div>
+            <div class="metric-value" id="dashboard-volatility">--</div>
+            <div class="metric-sub">
+              <span>最高：<span id="dashboard-high">--</span></span>
+              <span>最低：<span id="dashboard-low">--</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-updated" id="dashboard-updated">最新数据更新时间：--</div>
+        <div class="dashboard-chart-card">
+          <canvas id="dashboard-chart"></canvas>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-latest" data-tab="latest" role="tabpanel" aria-labelledby="tab-latest">
         <h2>最新报价</h2>
         <div class="muted" id="last-updated">加载中...</div>
         <div class="filters">
@@ -365,7 +527,7 @@ const htmlTemplate = /* html */ `<!doctype html>
         </div>
       </section>
 
-      <section>
+      <section class="tab-panel" id="panel-trend" data-tab="trend" role="tabpanel" aria-labelledby="tab-trend">
         <h2>走势图</h2>
         <div class="form-row" style="margin-bottom: 16px;">
           <div>
@@ -387,7 +549,7 @@ const htmlTemplate = /* html */ `<!doctype html>
         </div>
       </section>
 
-      <section>
+      <section class="tab-panel" id="panel-rules" data-tab="rules" role="tabpanel" aria-labelledby="tab-rules">
         <h2>预警规则</h2>
         <form id="rule-form" class="form-grid">
           <div class="form-row">
@@ -460,9 +622,97 @@ const htmlTemplate = /* html */ `<!doctype html>
       }
 
       const COMMON_SYMBOLS = new Set(["Au", "Pt", "Pd", "Ag", "SH_AuTD", "SH_Au9999", "GJ_HKAu", "GJ_Au", "GJ_USD"]);
+      const DEFAULT_DASHBOARD_SYMBOL = "SH_Au9999";
       let latestData = [];
       let showUncommon = false;
       const activeCategories = new Set(["LF", "SH", "GJ"]);
+      const tabButtons = document.querySelectorAll(".tab-button");
+      const tabPanels = document.querySelectorAll(".tab-panel");
+      const dashboardSymbolSelect = document.getElementById("dashboard-symbol");
+      const dashboardRangeSelect = document.getElementById("dashboard-range");
+      const dashboardPriceEl = document.getElementById("dashboard-price");
+      const dashboardChangeEl = document.getElementById("dashboard-change");
+      const dashboardBidEl = document.getElementById("dashboard-bid");
+      const dashboardAskEl = document.getElementById("dashboard-ask");
+      const dashboardSpreadEl = document.getElementById("dashboard-spread");
+      const dashboardMidEl = document.getElementById("dashboard-mid");
+      const dashboardVolatilityEl = document.getElementById("dashboard-volatility");
+      const dashboardHighEl = document.getElementById("dashboard-high");
+      const dashboardLowEl = document.getElementById("dashboard-low");
+      const dashboardUpdatedEl = document.getElementById("dashboard-updated");
+      const dashboardSubtitleEl = document.getElementById("dashboard-subtitle");
+      let chart;
+      let dashboardChart;
+
+      function activateTab(name = "overview") {
+        tabButtons.forEach((button) => {
+          const isActive = button.dataset.tab === name;
+          button.classList.toggle("active", isActive);
+          button.setAttribute("aria-selected", String(isActive));
+          button.setAttribute("tabindex", isActive ? "0" : "-1");
+        });
+        tabPanels.forEach((panel) => {
+          const isActive = panel.dataset.tab === name;
+          panel.classList.toggle("active", isActive);
+          panel.setAttribute("aria-hidden", String(!isActive));
+          if (isActive) {
+            requestAnimationFrame(() => {
+              if (name === "overview" && dashboardChart) {
+                dashboardChart.resize();
+              }
+              if (name === "trend" && chart) {
+                chart.resize();
+              }
+            });
+          }
+        });
+      }
+
+      tabButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const tab = button.dataset.tab;
+          if (tab) {
+            activateTab(tab);
+          }
+        });
+      });
+      const initialTab = document.querySelector(".tab-button.active")?.dataset.tab ?? "overview";
+      activateTab(initialTab);
+
+      function normalizeNumber(value) {
+        if (value == null) return null;
+        const num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        return num;
+      }
+
+      function formatPrice(value, digits = 2) {
+        const num = normalizeNumber(value);
+        if (num == null) return "--";
+        return num.toFixed(digits);
+      }
+
+      function pickPriceFromRow(row) {
+        if (!row) return null;
+        const ask = normalizeNumber(row.ask_price);
+        const bid = normalizeNumber(row.bid_price);
+        if (ask != null && ask > 0) return ask;
+        if (bid != null && bid > 0) return bid;
+        if (ask != null) return ask;
+        if (bid != null) return bid;
+        return null;
+      }
+
+      async function getSeries(symbol, limit) {
+        const res = await fetch("/api/prices?symbol=" + encodeURIComponent(symbol) + "&limit=" + limit);
+        if (!res.ok) {
+          throw new Error("加载历史数据失败");
+        }
+        const data = await res.json();
+        return [...(data.results ?? [])].sort(
+          (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
+        );
+      }
 
       async function loadLatest() {
         const res = await fetch("/api/prices/latest");
@@ -474,22 +724,58 @@ const htmlTemplate = /* html */ `<!doctype html>
           ? \`最后更新：\${new Date(data.results[0].recorded_at).toLocaleString()}\`
           : "尚无数据";
         const symbolSelect = document.getElementById("symbol-select");
-        if (!symbolSelect.dataset.initialized) {
-          const existed = new Set();
+        const shouldInitChartSelect = symbolSelect && !symbolSelect.dataset.initialized;
+        const shouldInitDashboardSelect = dashboardSymbolSelect && !dashboardSymbolSelect.dataset.initialized;
+        if ((shouldInitChartSelect || shouldInitDashboardSelect) && latestData.length) {
+          const unique = new Map();
           latestData.forEach((item) => {
-            if (existed.has(item.symbol)) return;
-            existed.add(item.symbol);
-            const option = document.createElement("option");
-            option.value = item.symbol;
-            option.textContent = \`\${item.symbol} - \${item.name}\`;
-            symbolSelect.appendChild(option);
+            if (!unique.has(item.symbol)) {
+              unique.set(item.symbol, item);
+            }
           });
-          symbolSelect.dataset.initialized = "1";
-          if (data.results[0]) {
-            symbolSelect.value = data.results[0].symbol;
-            loadSeries();
+          if (shouldInitChartSelect) {
+            symbolSelect.innerHTML = "";
+          }
+          if (shouldInitDashboardSelect) {
+            dashboardSymbolSelect.innerHTML = "";
+          }
+          unique.forEach((item) => {
+            if (shouldInitChartSelect) {
+              const option = document.createElement("option");
+              option.value = item.symbol;
+              option.textContent = item.symbol + " - " + item.name;
+              symbolSelect.appendChild(option);
+            }
+            if (shouldInitDashboardSelect) {
+              const option = document.createElement("option");
+              option.value = item.symbol;
+              option.textContent = item.symbol + " - " + item.name;
+              dashboardSymbolSelect.appendChild(option);
+            }
+          });
+          const iterator = unique.keys().next();
+          const fallbackSymbol = iterator && !iterator.done ? iterator.value : undefined;
+          const preferredSymbol = unique.has(DEFAULT_DASHBOARD_SYMBOL) ? DEFAULT_DASHBOARD_SYMBOL : fallbackSymbol;
+          if (shouldInitDashboardSelect) {
+            if (preferredSymbol) {
+              dashboardSymbolSelect.value = preferredSymbol;
+            }
+            dashboardSymbolSelect.dataset.initialized = "1";
+          }
+          if (shouldInitChartSelect) {
+            if (preferredSymbol) {
+              symbolSelect.value = preferredSymbol;
+            }
+            symbolSelect.dataset.initialized = "1";
+            if (symbolSelect.value) {
+              loadSeries();
+            }
           }
         }
+        updateDashboard().catch((error) => {
+          console.error(error);
+          showToast("更新数据大盘失败", true);
+        });
       }
 
       function renderLatest() {
@@ -529,33 +815,125 @@ const htmlTemplate = /* html */ `<!doctype html>
         }
       }
 
-      let chart;
-      async function loadSeries() {
-        const symbol = document.getElementById("symbol-select").value;
-        const limit = document.getElementById("limit-select").value;
-        if (!symbol) return;
-        const res = await fetch(\`/api/prices?symbol=\${encodeURIComponent(symbol)}&limit=\${limit}\`);
-        if (!res.ok) {
-          showToast("加载历史数据失败", true);
+      function updateDashboardFromLatest(latestItem) {
+        if (!dashboardPriceEl) return;
+        const symbol = dashboardSymbolSelect ? dashboardSymbolSelect.value : "";
+        if (dashboardSubtitleEl) {
+          if (latestItem) {
+            dashboardSubtitleEl.textContent =
+              "聚焦品种：" + latestItem.name + "（" + latestItem.symbol + "）";
+          } else if (dashboardSymbolSelect && dashboardSymbolSelect.selectedOptions.length) {
+            dashboardSubtitleEl.textContent =
+              "聚焦品种：" + dashboardSymbolSelect.selectedOptions[0].textContent;
+          } else if (symbol) {
+            dashboardSubtitleEl.textContent = "聚焦品种：" + symbol;
+          } else {
+            dashboardSubtitleEl.textContent = "聚焦品种：暂无数据";
+          }
+        }
+        const effectivePrice = pickPriceFromRow(latestItem);
+        dashboardPriceEl.textContent = formatPrice(effectivePrice);
+        if (dashboardChangeEl) {
+          dashboardChangeEl.textContent = "较区间起点 --";
+          dashboardChangeEl.classList.remove("trend-up", "trend-down");
+        }
+        const bid = normalizeNumber(latestItem && latestItem.bid_price);
+        const ask = normalizeNumber(latestItem && latestItem.ask_price);
+        if (dashboardBidEl) {
+          dashboardBidEl.textContent = formatPrice(bid);
+        }
+        if (dashboardAskEl) {
+          dashboardAskEl.textContent = formatPrice(ask);
+        }
+        if (dashboardSpreadEl) {
+          const spread = ask != null && bid != null ? Math.abs(ask - bid) : null;
+          dashboardSpreadEl.textContent = spread != null ? formatPrice(spread) : "--";
+        }
+        if (dashboardMidEl) {
+          const mid = ask != null && bid != null ? (ask + bid) / 2 : null;
+          dashboardMidEl.textContent = mid != null ? formatPrice(mid) : "--";
+        }
+        const high = normalizeNumber(latestItem && latestItem.high);
+        const low = normalizeNumber(latestItem && latestItem.low);
+        if (dashboardHighEl) {
+          dashboardHighEl.textContent = formatPrice(high);
+        }
+        if (dashboardLowEl) {
+          dashboardLowEl.textContent = formatPrice(low);
+        }
+        if (dashboardVolatilityEl) {
+          const volatility = high != null && low != null ? Math.abs(high - low) : null;
+          dashboardVolatilityEl.textContent = volatility != null ? formatPrice(volatility) : "--";
+        }
+        if (dashboardUpdatedEl) {
+          dashboardUpdatedEl.textContent = latestItem
+            ? "最新数据更新时间：" + new Date(latestItem.recorded_at).toLocaleString()
+            : "最新数据更新时间：暂无数据";
+        }
+      }
+
+      function renderDashboardSeries(symbol, chronologic) {
+        if (!dashboardChangeEl) return;
+        dashboardChangeEl.classList.remove("trend-up", "trend-down");
+        if (!chronologic.length) {
+          dashboardChangeEl.textContent = "较区间起点 --";
+          if (dashboardChart) {
+            dashboardChart.destroy();
+            dashboardChart = null;
+          }
           return;
         }
-        const data = await res.json();
-        const labels = data.results.map((item) => new Date(item.recorded_at).toLocaleTimeString());
-        const prices = data.results.map((item) => item.ask_price ?? item.bid_price ?? null);
-        const ctx = document.getElementById("price-chart");
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
+        const labels = chronologic.map((item) => new Date(item.recorded_at).toLocaleTimeString());
+        const prices = chronologic.map((item) => pickPriceFromRow(item));
+        const firstPoint = chronologic[0];
+        const latestPoint = chronologic[chronologic.length - 1];
+        const basePrice = pickPriceFromRow(firstPoint);
+        const latestPrice = pickPriceFromRow(latestPoint);
+        if (latestPrice != null && dashboardPriceEl) {
+          dashboardPriceEl.textContent = formatPrice(latestPrice);
+        }
+        if (dashboardUpdatedEl && latestPoint && latestPoint.recorded_at) {
+          dashboardUpdatedEl.textContent =
+            "最新数据更新时间：" + new Date(latestPoint.recorded_at).toLocaleString();
+        }
+        let changeText = "较区间起点 --";
+        if (basePrice != null && latestPrice != null && basePrice !== 0) {
+          const change = latestPrice - basePrice;
+          const pct = (change / basePrice) * 100;
+          const sign = change > 0 ? "+" : change < 0 ? "-" : "";
+          changeText =
+            "较区间起点 " +
+            sign +
+            Math.abs(change).toFixed(2) +
+            " (" +
+            sign +
+            Math.abs(pct).toFixed(2) +
+            "%)";
+          if (change > 0) {
+            dashboardChangeEl.classList.add("trend-up");
+          } else if (change < 0) {
+            dashboardChangeEl.classList.add("trend-down");
+          }
+        }
+        dashboardChangeEl.textContent = changeText;
+        const ctx = document.getElementById("dashboard-chart");
+        if (!ctx) return;
+        if (dashboardChart) {
+          dashboardChart.destroy();
+        }
+        dashboardChart = new Chart(ctx, {
           type: "line",
           data: {
             labels,
             datasets: [
               {
-                label: symbol + " 报价",
+                label: symbol + " 实时报价",
                 data: prices,
-                fill: false,
-                borderColor: "#2563EB",
-                tension: 0.32,
-                pointRadius: 0
+                fill: true,
+                borderColor: "rgba(79, 70, 229, 1)",
+                backgroundColor: "rgba(79, 70, 229, 0.16)",
+                pointRadius: 0,
+                tension: 0.32
               }
             ]
           },
@@ -567,7 +945,7 @@ const htmlTemplate = /* html */ `<!doctype html>
                 callbacks: {
                   label(ctx) {
                     const v = ctx.parsed.y;
-                    return Number.isFinite(v) ? \`价格：\${v.toFixed(2)}\` : "无数据";
+                    return Number.isFinite(v) ? "价格：" + v.toFixed(2) : "无数据";
                   }
                 }
               }
@@ -578,6 +956,81 @@ const htmlTemplate = /* html */ `<!doctype html>
             }
           }
         });
+      }
+
+      async function updateDashboard() {
+        if (!dashboardSymbolSelect) return;
+        const symbol = dashboardSymbolSelect.value || DEFAULT_DASHBOARD_SYMBOL;
+        if (!symbol) return;
+        const latestItem =
+          latestData.find((item) => item.symbol === symbol) ??
+          latestData.find((item) => item.symbol === DEFAULT_DASHBOARD_SYMBOL) ??
+          null;
+        updateDashboardFromLatest(latestItem);
+        const limitRaw = dashboardRangeSelect ? Number(dashboardRangeSelect.value) : 120;
+        const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 120;
+        try {
+          const chronologic = await getSeries(symbol, limit);
+          renderDashboardSeries(symbol, chronologic);
+        } catch (error) {
+          renderDashboardSeries(symbol, []);
+          throw error;
+        }
+      }
+
+      async function loadSeries() {
+        const symbolSelectEl = document.getElementById("symbol-select");
+        const limitSelectEl = document.getElementById("limit-select");
+        if (!symbolSelectEl || !limitSelectEl) return;
+        const symbol = symbolSelectEl.value;
+        if (!symbol) return;
+        const limitValue = Number(limitSelectEl.value);
+        const limit = Number.isFinite(limitValue) && limitValue > 0 ? limitValue : 120;
+        try {
+          const chronologic = await getSeries(symbol, limit);
+          const labels = chronologic.map((item) => new Date(item.recorded_at).toLocaleTimeString());
+          const prices = chronologic.map((item) => pickPriceFromRow(item));
+          const ctx = document.getElementById("price-chart");
+          if (!ctx) return;
+          if (chart) chart.destroy();
+          chart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: symbol + " 报价",
+                  data: prices,
+                  fill: false,
+                  borderColor: "#2563EB",
+                  tension: 0.32,
+                  pointRadius: 0
+                }
+              ]
+            },
+            options: {
+              interaction: { intersect: false, mode: "index" },
+              plugins: {
+                legend: { display: true },
+                tooltip: {
+                  callbacks: {
+                    label(ctx) {
+                      const v = ctx.parsed.y;
+                      return Number.isFinite(v) ? "价格：" + v.toFixed(2) : "无数据";
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: { display: true, title: { display: true, text: "时间" } },
+                y: { display: true, beginAtZero: false }
+              }
+            }
+          });
+        } catch (error) {
+          console.error(error);
+          showToast("加载历史数据失败", true);
+        }
       }
 
       async function loadRules() {
@@ -623,6 +1076,22 @@ const htmlTemplate = /* html */ `<!doctype html>
 
       document.getElementById("symbol-select").addEventListener("change", loadSeries);
       document.getElementById("limit-select").addEventListener("change", loadSeries);
+      if (dashboardSymbolSelect) {
+        dashboardSymbolSelect.addEventListener("change", () => {
+          updateDashboard().catch((error) => {
+            console.error(error);
+            showToast("更新数据大盘失败", true);
+          });
+        });
+      }
+      if (dashboardRangeSelect) {
+        dashboardRangeSelect.addEventListener("change", () => {
+          updateDashboard().catch((error) => {
+            console.error(error);
+            showToast("更新数据大盘失败", true);
+          });
+        });
+      }
       document.getElementById("symbol-search").addEventListener("input", () => {
         renderLatest();
       });
